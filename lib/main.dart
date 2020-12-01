@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drinksmaker/ingredientConfig.dart';
 import 'package:drinksmaker/recipe.dart';
 import 'package:drinksmaker/recipePage.dart';
 import 'package:drinksmaker/settingsPage.dart';
@@ -101,6 +102,7 @@ class _RecipeListPageState extends State<RecipeListPage> {
       );
 
   final List<Recipe> recipes = <Recipe>[];
+  final List<IngredientConfig> ingredientConfig = <IngredientConfig>[];
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +116,7 @@ class _RecipeListPageState extends State<RecipeListPage> {
               child: GestureDetector(
                 onTap: () {
                   _tryConnect();
-                  registerHandler();
+                  registerWebsocketHandler();
                   fetchRecipes();
                 },
                 child: Icon(
@@ -168,7 +170,7 @@ class _RecipeListPageState extends State<RecipeListPage> {
     channel.sink.add("{\"type\":\"recipes\"}");
   }
 
-  void registerHandler() {
+  void registerWebsocketHandler() {
     channel.stream.listen((receivedMessage) {
       var dataJson = json.decode(receivedMessage);
 
@@ -177,11 +179,21 @@ class _RecipeListPageState extends State<RecipeListPage> {
         var tagObjsJson = jsonDecode(receivedMessage)['recipes'] as List;
 
         setState(() {
-          List<Recipe> tagObjs =
-              tagObjsJson.map((tagJson) => Recipe.fromJson(tagJson)).toList();
           recipes.clear(); // New recipe list
-          tagObjs.forEach((recipe) {
-            recipes.insert(0, recipe);
+          tagObjsJson.forEach((tagJson) {
+            recipes.insert(0, Recipe.fromJson(tagJson));
+          });
+        });
+        return;
+      }
+
+      if (dataJson['ingredients'] != null) {
+        //It's a list of available ingredients
+        var tagObjsJson = jsonDecode(receivedMessage)['recipes'] as List;
+        setState(() {
+          ingredientConfig.clear();
+          tagObjsJson.forEach((tagJson) {
+            ingredientConfig.insert(0, IngredientConfig.fromJson(tagJson));
           });
         });
       }
@@ -190,7 +202,7 @@ class _RecipeListPageState extends State<RecipeListPage> {
 
   @override
   void initState() {
-    registerHandler();
+    registerWebsocketHandler();
 
     fetchRecipes();
 

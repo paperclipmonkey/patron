@@ -40,10 +40,11 @@ class Recipe {
   final String pre;
   final String post;
   final String glass;
+  final double units;
   final List<Step> steps;
 
   Recipe(this.name, this.intro, this.description, this.pre, this.post,
-      this.glass, this.steps);
+      this.glass, this.units, this.steps);
 
   factory Recipe.fromJson(dynamic json) {
     var jsonSteps = json['steps'] as List;
@@ -58,6 +59,7 @@ class Recipe {
         json['pre'] as String,
         json['post'] as String,
         json['glass'] as String,
+        json['units'].toDouble(),
         steps);
   }
 
