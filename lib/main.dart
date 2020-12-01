@@ -11,16 +11,10 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'customIcons.dart';
 
-// substitute your server's IP and port
-// const YOUR_SERVER_IP = '192.168.0.25';
-// const YOUR_SERVER_PORT = '8080';
-// const URL = 'ws://$YOUR_SERVER_IP:$YOUR_SERVER_PORT';
-
-WebSocketChannel channel; // = WebSocketChannel.connect(Uri.parse(URL));
+WebSocketChannel channel;
 
 void _tryConnect() {
   var connectionUrl = 'ws://' + PrefService.getString('server_ip');
-  print(connectionUrl);
   channel = IOWebSocketChannel.connect(connectionUrl);
 }
 
@@ -203,45 +197,3 @@ class _RecipeListPageState extends State<RecipeListPage> {
     super.initState();
   }
 }
-
-// class RecipePage extends StatelessWidget {
-//   RecipePage(this.recipe);
-//
-//   final Recipe recipe;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: Text(recipe.name),
-//       ),
-//       body: Center(
-//           child: Column(
-//         children: <Widget>[
-//           Text(recipe.description),
-//           Text(recipe.volume().toString() + 'ml'),
-//           Column(
-//             mainAxisAlignment: MainAxisAlignment.center,
-//             children: <Widget>[
-//               for (var ingredient in recipe.ingredients())
-//                 Row(
-//                   children: [
-//                     Text(ingredient.name),
-//                     Text(ingredient.amount.toString() + 'ml'),
-//                   ],
-//                 )
-//             ],
-//           )
-//         ],
-//       )),
-//       floatingActionButton: FloatingActionButton(
-//           child: Icon(Icons.wine_bar_sharp),
-//           tooltip: 'Make drink',
-//           onPressed: () {
-//             // debugPrint("Sending order");
-//             // channel.sink.add(json.encode(
-//             //     OrderRequest(recipe))); // {\"type\":\"make\", \"recipe\":
-//           }),
-//     );
-//   }
-// }

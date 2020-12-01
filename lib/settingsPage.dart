@@ -1,7 +1,21 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:preferences/preference_page.dart';
 import 'package:preferences/preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+
+class GetLiquidsRequest {
+  Map<String, dynamic> toJson() => {
+        'type': 'getLiquids',
+      };
+}
+
+class SetLiquidsRequest {
+  Map<String, dynamic> toJson() => {
+        'type': 'setLiquids',
+      };
+}
 
 class SettingsPage extends StatefulWidget {
   final WebSocketChannel channel;
@@ -10,11 +24,22 @@ class SettingsPage extends StatefulWidget {
 
   @override
   _SettingsPageState createState() => _SettingsPageState();
+
+  getLiquids() {
+    debugPrint("Getting liquids");
+    channel.sink.add(json.encode(GetLiquidsRequest()));
+  }
+
+  setLiquids() {
+    debugPrint("Setting liquids");
+    channel.sink.add(json.encode(SetLiquidsRequest()));
+  }
 }
 
 class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
+    this.widget.getLiquids(); // Load available liquids
     return Scaffold(
       appBar: AppBar(
         title: Text('Settings'),

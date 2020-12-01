@@ -24,9 +24,7 @@ class RecipePage extends StatelessWidget {
   RecipePage({Key key, this.recipe, this.channel}) : super(key: key);
 
   orderDrink() {
-    debugPrint("Sending order");
-    channel.sink.add(
-        json.encode(OrderRequest(recipe))); // {\"type\":\"make\", \"recipe\":
+    channel.sink.add(json.encode(OrderRequest(recipe)));
   }
 
   final levelIndicator = Container(
@@ -125,6 +123,7 @@ class RecipePage extends StatelessWidget {
       recipe.description,
       style: TextStyle(fontSize: 18.0),
     );
+
     final readButton = Container(
         padding: EdgeInsets.symmetric(vertical: 16.0),
         width: MediaQuery.of(context).size.width,
@@ -133,6 +132,7 @@ class RecipePage extends StatelessWidget {
           color: Color.fromRGBO(58, 66, 86, 1.0),
           child: Text("MIX THIS DRINK", style: TextStyle(color: Colors.white)),
         ));
+
     final bottomContent = Container(
       width: MediaQuery.of(context).size.width,
       padding: EdgeInsets.all(40.0),
