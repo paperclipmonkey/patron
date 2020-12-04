@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drinksmaker/customIcons.dart';
 import 'package:drinksmaker/recipe.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 // Wrap a Recipe in an order request
@@ -17,15 +18,62 @@ class OrderRequest {
       };
 }
 
+class MixButton extends StatelessWidget {
+  final Recipe recipe;
+  final WebSocketChannel channel;
+
+  MixButton({Key key, this.recipe, this.channel}) : super(key: key);
+
+  orderDrink() {
+    channel.sink.add(json.encode(OrderRequest(recipe)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+        padding: EdgeInsets.symmetric(vertical: 16.0),
+        width: MediaQuery.of(context).size.width,
+        child: RaisedButton(
+          onPressed: () {
+            showBottomSheet(
+                context: context,
+                builder: (context) => Container(
+                      width: MediaQuery.of(context).size.width,
+                      height: 250,
+                      child: Card(
+                          elevation: 10,
+                          child: Column(children: [
+                            LinearProgressIndicator(
+                              value: 0.5,
+                              minHeight: 6,
+                            ),
+                            Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 5.0, vertical: 5.0),
+                                child: MarkdownBody(
+                                    data: recipe.pre.isNotEmpty
+                                        ? recipe.pre
+                                        : 'Place a glass in to the bartender')),
+                            RaisedButton(
+                              onPressed: orderDrink,
+                              color: Color.fromRGBO(58, 66, 86, 1.0),
+                              child: Text("MIX THIS DRINK",
+                                  style: TextStyle(color: Colors.white)),
+                            )
+                          ])),
+                    ));
+          },
+          color: Color.fromRGBO(58, 66, 86, 1.0),
+          child: Text("MIX THIS DRINK", style: TextStyle(color: Colors.white)),
+        ));
+  }
+}
+
 class RecipePage extends StatelessWidget {
   final Recipe recipe;
   final WebSocketChannel channel;
 
   RecipePage({Key key, this.recipe, this.channel}) : super(key: key);
-
-  orderDrink() {
-    channel.sink.add(json.encode(OrderRequest(recipe)));
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +91,7 @@ class RecipePage extends StatelessWidget {
                 flex: 4,
                 child: Padding(
                     padding: EdgeInsets.only(left: 0.0),
-                    child: Text(ingredient.amount.toString(),
+                    child: Text(ingredient.amount.toString() + ' ml',
                         style: TextStyle(color: Colors.white))),
               )
             ],
@@ -59,58 +107,62 @@ class RecipePage extends StatelessWidget {
           ),
         );
 
-    final levelIndicator = Container(
+    final unitsIndicator = Container(
       child: Container(
         child: LinearProgressIndicator(
             backgroundColor: Color.fromRGBO(209, 224, 224, 0.2),
             value: recipe.units / 10, // 1 - 10 = 0.1 - 1
-            valueColor: AlwaysStoppedAnimation(Colors.green)),
+            valueColor: AlwaysStoppedAnimation(Color.lerp(
+                Colors.green[300], Colors.red[300], recipe.units / 10))),
       ),
     );
 
-    final coursePrice = Container(
+    final volumeLabel = Container(
       padding: const EdgeInsets.all(7.0),
       decoration: new BoxDecoration(
           border: new Border.all(color: Colors.white),
           borderRadius: BorderRadius.circular(5.0)),
       child: new Text(
         recipe.volume().toString() + " ml",
-        style: TextStyle(color: Colors.white),
+        style: TextStyle(fontSize: 10, color: Colors.white),
       ),
     );
 
     final topContentText = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SizedBox(height: 120.0),
-        Icon(
-          CustomIcons.getIcon(recipe.glass),
-          color: Colors.white,
-          size: 40.0,
-        ),
-        Container(
-          width: 90.0,
-          child: new Divider(color: Colors.green),
-        ),
-        SizedBox(height: 10.0),
-        Text(
-          recipe.name,
-          style: TextStyle(color: Colors.white, fontSize: 45.0),
-        ),
-        SizedBox(height: 30.0),
+        SizedBox(height: 130.0), // Height above
         Row(
           mainAxisAlignment: MainAxisAlignment.start,
           children: <Widget>[
-            Expanded(flex: 1, child: levelIndicator),
             Expanded(
-                flex: 6,
+              flex: 1,
+              child: Icon(
+                CustomIcons.getIcon(recipe.glass),
+                color: Colors.white,
+                size: 40.0,
+              ),
+            ),
+            Expanded(
+                flex: 4,
                 child: Padding(
                     padding: EdgeInsets.only(left: 10.0),
-                    child: Text(
-                      recipe.units.toString() + ' Units',
-                      style: TextStyle(color: Colors.white),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: unitsIndicator),
+                            Expanded(
+                                child: Text(
+                                  recipe.units.toString() + ' Units',
+                                  style:
+                                  TextStyle(fontSize: 12, color: Colors.white),
+                                )),
+                          ],
+                        ),
+                        volumeLabel
+                      ],
                     ))),
-            Expanded(flex: 2, child: coursePrice)
           ],
         ),
       ],
@@ -130,54 +182,37 @@ class RecipePage extends StatelessWidget {
         Container(
           height: MediaQuery.of(context).size.height * 0.5,
           padding: EdgeInsets.all(30.0),
-          width: MediaQuery.of(context).size.width,
+          width: MediaQuery
+              .of(context)
+              .size
+              .width,
           decoration: BoxDecoration(color: Color.fromRGBO(58, 66, 86, .8)),
           child: Center(
             child: topContentText,
           ),
         ),
-        Positioned(
-          left: 8.0,
-          top: 60.0,
-          child: InkWell(
-            onTap: () {
-              Navigator.pop(context);
-            },
-            child: Icon(Icons.arrow_back, color: Colors.white),
-          ),
-        )
       ],
     );
 
-    final bottomContentText = Text(
-      recipe.description,
-      style: TextStyle(fontSize: 18.0),
+    final bottomContentText = MarkdownBody(
+      data: recipe.description,
     );
 
-    final mixButton = Container(
-        padding: EdgeInsets.symmetric(vertical: 16.0),
-        width: MediaQuery
-            .of(context)
-            .size
-            .width,
-        child: RaisedButton(
-          onPressed: orderDrink,
-          color: Color.fromRGBO(58, 66, 86, 1.0),
-          child: Text("MIX THIS DRINK", style: TextStyle(color: Colors.white)),
-        ));
 
-    final ingredientsList = Padding(
-      padding: const EdgeInsets.only(top: 10.0),
-      child: ListView.builder(
-        scrollDirection: Axis.vertical,
-        shrinkWrap: true,
-        itemCount: recipe
-            .ingredients()
-            .length,
-        itemBuilder: (BuildContext context, int index) {
-          return makeCard(recipe.ingredients()[index]);
-        },
-      ),
+    final ingredientsList = ExpansionTile(
+      title: Text('Ingredients'),
+      children: <Widget>[
+        ListView.builder(
+          scrollDirection: Axis.vertical,
+          shrinkWrap: true,
+          itemCount: recipe
+              .ingredients()
+              .length,
+          itemBuilder: (BuildContext context, int index) {
+            return makeCard(recipe.ingredients()[index]);
+          },
+        )
+      ],
     );
 
     final bottomContent = Container(
@@ -188,14 +223,36 @@ class RecipePage extends StatelessWidget {
       padding: EdgeInsets.all(40.0),
       child: Center(
         child: Column(
-          children: <Widget>[bottomContentText, ingredientsList, mixButton],
+          children: <Widget>[
+            bottomContentText,
+            ingredientsList,
+            MixButton(recipe: this.recipe, channel: this.channel)
+          ],
         ),
       ),
     );
 
     return Scaffold(
-      body: ListView(
-        children: <Widget>[topContent, bottomContent],
+      body: CustomScrollView(
+        slivers: <Widget>[
+          SliverAppBar(
+            // title: Text(recipe.name),
+            expandedHeight: 250.0,
+            pinned: true,
+            floating: true,
+            flexibleSpace: FlexibleSpaceBar(
+                centerTitle: false,
+                title: Text(recipe.name,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 25.0,
+                    )),
+                background: topContent),
+          ),
+          new SliverList(
+              delegate:
+              new SliverChildListDelegate([bottomContent])),
+        ],
       ),
     );
   }

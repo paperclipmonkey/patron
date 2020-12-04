@@ -5,41 +5,90 @@ import 'package:preferences/preference_page.dart';
 import 'package:preferences/preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-class GetLiquidsRequest {
+class GetIngredientsAvailableRequest {
   Map<String, dynamic> toJson() => {
         'type': 'getLiquids',
       };
 }
 
-class SetLiquidsRequest {
-  Map<String, dynamic> toJson() => {
-        'type': 'setLiquids',
+class SetIngredientsAvailableRequest {
+  final List<String> optics;
+  final List<String> pumps;
+
+  SetIngredientsAvailableRequest(this.optics, this.pumps);
+
+  Map<String, dynamic> toJson() =>
+      {
+        'type': 'setIngredientsAvailable',
+        'available': {
+          'optics': this.optics,
+          'pumps': this.pumps,
+        }
       };
 }
 
 class SettingsPage extends StatefulWidget {
   final WebSocketChannel channel;
+  final int numOptics = 4;
+  final int numPumps = 8;
 
   SettingsPage({Key key, this.channel}) : super(key: key);
 
   @override
   _SettingsPageState createState() => _SettingsPageState();
 
-  getLiquids() {
+  getIngredientsAvailable() {
     debugPrint("Getting liquids");
-    channel.sink.add(json.encode(GetLiquidsRequest()));
+    channel.sink.add(json.encode(GetIngredientsAvailableRequest()));
   }
 
-  setLiquids() {
+  setIngredientsAvailable() {
+    PrefService.getString('user_description', ignoreCache: true);
+    var optics = PrefService.getKeys()
+        .map((key) => key.replaceAll('pref_', ''))
+        .where((element) => element.contains('optic_'))
+        .map((key) => PrefService.getString(key))
+        .toList();
+
+    var pumps = PrefService.getKeys()
+        .map((key) => key.replaceAll('pref_', ''))
+        .where((element) => element.contains('pump_'))
+        .map((key) => PrefService.getString(key))
+        .toList();
+
     debugPrint("Setting liquids");
-    channel.sink.add(json.encode(SetLiquidsRequest()));
+    channel.sink.add(
+        json.encode(SetIngredientsAvailableRequest(optics, pumps)));
   }
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+
+  // Build the option ui dialog
+  Widget buildOptionDialog(int num, String type, List<String> ingredients) {
+    List<Widget> options = ingredients.map<Widget>((e) =>
+        RadioPreference(e, e, type + '_' + num.toString())
+    ).toList();
+    return PreferenceDialogLink(
+      type + ' ' + num.toString(),
+      dialog: PreferenceDialog(
+        options,
+        title: type + ' ' + num.toString(),
+        cancelText: 'Close',
+      ),
+    );
+  }
+
+  // Build the option ui dialog
+  List<Widget> buildOptionDialogs(int count, String type,
+      List<String> ingredients) {
+    return new List.generate(
+        count, (index) => buildOptionDialog(index + 1, type, ingredients));
+  }
+
   @override
   Widget build(BuildContext context) {
-    this.widget.getLiquids(); // Load available liquids
+    this.widget.getIngredientsAvailable(); // Load available liquids
     return Scaffold(
       appBar: AppBar(
         title: Text('Settings'),
@@ -71,75 +120,23 @@ class _SettingsPageState extends State<SettingsPage> {
               defaultVal: true,
             ),
             PreferenceTitle('Channels'),
-            TextFieldPreference(
-              'Channel 0',
-              'channel0',
-            ),
-            TextFieldPreference(
-              'Channel 1',
-              'channel1',
-            ),
-            TextFieldPreference(
-              'Channel 2',
-              'channel2',
-            ),
-            TextFieldPreference(
-              'Channel 3',
-              'channel3',
-            ),
-            TextFieldPreference(
-              'Channel 4',
-              'channel4',
-            ),
-            TextFieldPreference(
-              'Channel 5',
-              'channel5',
-            ),
-            TextFieldPreference(
-              'Channel 6',
-              'channel6',
-            ),
-            TextFieldPreference(
-              'Channel 7',
-              'channel7',
-            ),
+            ...buildOptionDialogs(
+                this.widget.numOptics, 'optic', ['apple', 'orange', 'vodka'])
           ]),
         ),
         PreferencePageLink(
           'Pumps',
           trailing: Icon(Icons.keyboard_arrow_right),
           page: PreferencePage([
-            PreferenceTitle('New Posts'),
+            PreferenceTitle('Pumps'),
             SwitchPreference(
-              'New Posts from Friends',
+              'Pumps Enabled',
               'notification_newpost_friend',
               defaultVal: true,
             ),
-            PreferenceTitle('Private Messages'),
-            SwitchPreference(
-              'Private Messages from Friends',
-              'notification_pm_friend',
-              defaultVal: true,
-            ),
-            SwitchPreference(
-              'Private Messages from Strangers',
-              'notification_pm_stranger',
-              onEnable: () async {
-                // Write something in Firestore or send a request
-                await Future.delayed(Duration(seconds: 1));
-
-                print('Enabled Notifications for PMs from Strangers!');
-              },
-              onDisable: () async {
-                // Write something in Firestore or send a request
-                await Future.delayed(Duration(seconds: 1));
-
-                // No Connection? No Problem! Just throw an Exception with your custom message...
-                throw Exception('No Connection');
-
-                // Disabled Notifications for PMs from Strangers!
-              },
-            ),
+            PreferenceTitle('Channels'),
+            ...buildOptionDialogs(
+                this.widget.numPumps, 'pump', ['apple', 'orange', 'vodka'])
           ]),
         ),
         PreferenceTitle('Connection'),
@@ -147,6 +144,11 @@ class _SettingsPageState extends State<SettingsPage> {
           'Server IP',
           'server_ip',
         ),
+        RaisedButton(
+          onPressed: this.widget.setIngredientsAvailable,
+          color: Color.fromRGBO(58, 66, 86, 1.0),
+          child: Text("Save", style: TextStyle(color: Colors.white)),
+        )
         // TextFieldPreference('E-Mail', 'user_email',
         //     defaultVal: 'email@example.com', validator: (str) {
         //       return null;
