@@ -102,7 +102,7 @@ class _RecipeListPageState extends State<RecipeListPage> {
       );
 
   final List<Recipe> recipes = <Recipe>[];
-  final List<IngredientConfig> ingredientConfig = <IngredientConfig>[];
+  List<String> allIngredients = <String>[];
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +132,8 @@ class _RecipeListPageState extends State<RecipeListPage> {
                       context,
                       MaterialPageRoute(
                           builder: (context) =>
-                              SettingsPage(channel: channel)));
+                              SettingsPage(channel: channel,
+                                  allIngredients: this.allIngredients)));
                 },
                 child: Icon(
                   IconData(0xe9c6, fontFamily: 'MaterialIcons'),
@@ -168,11 +169,13 @@ class _RecipeListPageState extends State<RecipeListPage> {
       recipes.clear();
     });
     channel.sink.add("{\"type\":\"recipes\"}");
+    channel.sink.add("{\"type\":\"getIngredients\"}");
+    channel.sink.add("{\"type\":\"getIngredientsAvailable\"}");
   }
 
   void registerWebsocketHandler() {
     channel.stream.listen((receivedMessage) {
-      var dataJson = json.decode(receivedMessage);
+      var dataJson = json.decode(receivedMessage) as Map;
 
       if (dataJson['recipes'] != null) {
         // It's a recipe response
@@ -187,14 +190,32 @@ class _RecipeListPageState extends State<RecipeListPage> {
         return;
       }
 
-      if (dataJson['ingredients'] != null) {
-        //It's a list of available ingredients
-        var tagObjsJson = jsonDecode(receivedMessage)['recipes'] as List;
+      //It's a list of all ingredients
+      if (dataJson['getIngredients'] != null) {
         setState(() {
-          ingredientConfig.clear();
-          tagObjsJson.forEach((tagJson) {
-            ingredientConfig.insert(0, IngredientConfig.fromJson(tagJson));
-          });
+          this.allIngredients =
+              (jsonDecode(receivedMessage)['getIngredients'] as List).cast<
+                  String>();
+          this.allIngredients.add(''); // Empty optic/pump
+        });
+      }
+
+      //optic and pump config, as currently set from the system
+      if (dataJson['getIngredientsAvailable'] != null) {
+        setState(() {
+          var getIngredientsAvailable = dataJson['getIngredientsAvailable'];
+          List<String> optics = (getIngredientsAvailable['optics']).cast<
+              String>();
+          // Update the local config values with the server config
+          for (var i = 0; i < optics.length; i++) {
+            PrefService.setString('optic_' + i.toString(), optics[i]);
+          }
+
+          List<String> pumps = (getIngredientsAvailable['pumps']).cast<
+              String>();
+          for (var i = 0; i < pumps.length; i++) {
+            PrefService.setString('pump_' + i.toString(), pumps[i]);
+          }
         });
       }
     });

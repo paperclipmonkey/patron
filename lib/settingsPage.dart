@@ -5,12 +5,6 @@ import 'package:preferences/preference_page.dart';
 import 'package:preferences/preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-class GetIngredientsAvailableRequest {
-  Map<String, dynamic> toJson() => {
-        'type': 'getLiquids',
-      };
-}
-
 class SetIngredientsAvailableRequest {
   final List<String> optics;
   final List<String> pumps;
@@ -29,36 +23,37 @@ class SetIngredientsAvailableRequest {
 
 class SettingsPage extends StatefulWidget {
   final WebSocketChannel channel;
-  final int numOptics = 4;
+  final int numOptics = 4; // TODO, take this from the preferences
   final int numPumps = 8;
+  final List<String> allIngredients;
 
-  SettingsPage({Key key, this.channel}) : super(key: key);
+  SettingsPage({Key key, this.channel, this.allIngredients}) : super(key: key);
 
   @override
   _SettingsPageState createState() => _SettingsPageState();
 
-  getIngredientsAvailable() {
-    debugPrint("Getting liquids");
-    channel.sink.add(json.encode(GetIngredientsAvailableRequest()));
-  }
-
   setIngredientsAvailable() {
-    PrefService.getString('user_description', ignoreCache: true);
+    // Get array of optic values ['vodka', 'orange']
     var optics = PrefService.getKeys()
-        .map((key) => key.replaceAll('pref_', ''))
+        .map((key) =>
+            key.replaceAll('pref_', '')) // getString doesn't need pref_
         .where((element) => element.contains('optic_'))
         .map((key) => PrefService.getString(key))
         .toList();
 
+    // Get array of pump values ['vodka', 'orange']
     var pumps = PrefService.getKeys()
         .map((key) => key.replaceAll('pref_', ''))
         .where((element) => element.contains('pump_'))
         .map((key) => PrefService.getString(key))
         .toList();
 
-    debugPrint("Setting liquids");
+    // Send the new ingredients list to the server
     channel.sink.add(
         json.encode(SetIngredientsAvailableRequest(optics, pumps)));
+
+    // Reload the available recipes
+    channel.sink.add("{\"type\":\"recipes\"}");
   }
 }
 
@@ -83,12 +78,11 @@ class _SettingsPageState extends State<SettingsPage> {
   List<Widget> buildOptionDialogs(int count, String type,
       List<String> ingredients) {
     return new List.generate(
-        count, (index) => buildOptionDialog(index + 1, type, ingredients));
+        count, (index) => buildOptionDialog(index, type, ingredients));
   }
 
   @override
   Widget build(BuildContext context) {
-    this.widget.getIngredientsAvailable(); // Load available liquids
     return Scaffold(
       appBar: AppBar(
         title: Text('Settings'),
@@ -121,7 +115,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             PreferenceTitle('Channels'),
             ...buildOptionDialogs(
-                this.widget.numOptics, 'optic', ['apple', 'orange', 'vodka'])
+                this.widget.numOptics, 'optic', this.widget.allIngredients)
           ]),
         ),
         PreferencePageLink(
@@ -136,7 +130,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             PreferenceTitle('Channels'),
             ...buildOptionDialogs(
-                this.widget.numPumps, 'pump', ['apple', 'orange', 'vodka'])
+                this.widget.numPumps, 'pump', this.widget.allIngredients)
           ]),
         ),
         PreferenceTitle('Connection'),
